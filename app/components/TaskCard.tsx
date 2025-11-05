@@ -21,16 +21,16 @@ export default function TaskCard({ task, onToggleStatus, onDelete }: TaskCardPro
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 flex items-start space-x-3 sm:space-x-4 transition-all duration-200 hover:shadow-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
       <button 
-        onClick={() => onToggleStatus(task.id, !task.completed)}
-        className={`flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-200 ${task.completed 
+        onClick={() => onToggleStatus(task.id, !Boolean(task.completed))}
+        className={`flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-200 ${Boolean(task.completed) 
           ? 'border-green-500 bg-green-500 text-white' 
           : 'border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400'}`}
-        aria-label={task.completed ? '标记为未完成' : '标记为已完成'}
+        aria-label={Boolean(task.completed) ? '标记为未完成' : '标记为已完成'}
         tabIndex={0}
         role="checkbox"
-        aria-checked={task.completed}
+        aria-checked={Boolean(task.completed)}
       >
-        {task.completed && (
+        {Boolean(task.completed) && (
           <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>

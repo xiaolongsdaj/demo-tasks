@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllTasks, createTask } from '../../../lib/data/db';
+import { getAllTasks, createTask, initDatabase } from '../../../lib/data/db';
 import { Task, ApiResponse, CreateTaskRequest } from '../../../lib/types';
 
-// GET 方法：获取所有任务
 export async function GET() {
   try {
+    await initDatabase();
     const tasks = await getAllTasks();
     return NextResponse.json<ApiResponse<Task[]>>({
       success: true,
@@ -19,10 +19,9 @@ export async function GET() {
   }
 }
 
-// POST 方法：创建新任务
+
 export async function POST(request: NextRequest) {
   try {
-    // 检查请求体是否为空
     const rawBody = await request.text();
     if (!rawBody || rawBody.trim() === '') {
       return NextResponse.json<ApiResponse<Task>>({
@@ -41,7 +40,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    // 验证输入
     if (!body.title || typeof body.title !== 'string' || body.title.trim() === '') {
       return NextResponse.json<ApiResponse<Task>>({
         success: false,

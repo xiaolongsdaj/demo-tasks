@@ -86,45 +86,31 @@ async function initTables() {
   }
 }
 
-// 在开发环境中，如果MySQL连接失败，可以使用内存存储作为备用
-let memoryFallback: Task[] = [];
-let useMemoryFallback = false;
-
 // 初始化数据库
 export const initDatabase = async (): Promise<void> => {
-  try {
-    await initDatabaseConnection();
-  } catch (error) {
-    console.warn('MySQL connection failed, using memory fallback:', error);
-    useMemoryFallback = true;
-    
-    // 初始化内存存储的示例数据
-    if (memoryFallback.length === 0) {
-      memoryFallback = [
-        { id: 1, title: '示例任务 1', completed: false, createdAt: new Date().toISOString() },
-        { id: 2, title: '示例任务 2', completed: true, createdAt: new Date().toISOString() }
-      ];
-    }
-  }
+  await initDatabaseConnection();
 };
 
 // 基础查询执行函数
 async function executeQuery<T>(sql: string, params?: any[]): Promise<T> {
-  const db = await initDatabaseConnection();
-  const [rows] = await db.query(sql, params);
-  return rows as T;
+  try {
+    // 确保数据库已初始化
+    await initDatabase();
+    
+    const db = await initDatabaseConnection();
+    const [rows] = await db.query(sql, params);
+    return rows as T;
+  } catch (error) {
+    console.error('Database query failed:', error);
+    throw error;
+  }
 }
 
 // 获取所有任务
 export const getAllTasks = async (): Promise<Task[]> => {
   try {
-    if (useMemoryFallback) {
-      return [...memoryFallback].sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA;
-      });
-    }
+    // 确保数据库已初始化
+    await initDatabase();
 
     const rows = await executeQuery<RowDataPacket[]>(
       'SELECT id, title, completed, created_at as createdAt FROM tasks ORDER BY created_at DESC'
@@ -132,7 +118,7 @@ export const getAllTasks = async (): Promise<Task[]> => {
     
     return rows as unknown as Task[];
   } catch (error) {
-    console.error('Failed to get tasks:', error);
+    console.error('Failed to get tasks from database:', error);
     throw error;
   }
 };
@@ -143,17 +129,6 @@ export const createTask = async (title: string): Promise<Task> => {
     // 验证输入
     if (!title || typeof title !== 'string' || title.trim() === '') {
       throw new Error('任务标题不能为空');
-    }
-    
-    if (useMemoryFallback) {
-      const newTask: Task = {
-        id: memoryFallback.length > 0 ? Math.max(...memoryFallback.map(t => t.id)) + 1 : 1,
-        title: title.trim(),
-        completed: false,
-        createdAt: new Date().toISOString()
-      };
-      memoryFallback.unshift(newTask);
-      return newTask;
     }
 
     const result = await executeQuery<any>(
@@ -191,22 +166,6 @@ export const updateTask = async (id: number, updates: Partial<Task>): Promise<Ta
     
     if (updates.completed !== undefined && typeof updates.completed !== 'boolean') {
       throw new Error('完成状态必须是布尔值');
-    }
-    
-    if (useMemoryFallback) {
-      const taskIndex = memoryFallback.findIndex(t => t.id === id);
-      if (taskIndex === -1) {
-        return null;
-      }
-      
-      const updatedTask = { 
-        ...memoryFallback[taskIndex], 
-        ...updates,
-        ...(updates.title && { title: updates.title.trim() })
-      };
-      
-      memoryFallback[taskIndex] = updatedTask;
-      return updatedTask;
     }
 
     // 检查任务是否存在
@@ -260,12 +219,6 @@ export const deleteTask = async (id: number): Promise<boolean> => {
     if (typeof id !== 'number' || isNaN(id) || id <= 0) {
       throw new Error('无效的任务ID');
     }
-    
-    if (useMemoryFallback) {
-      const initialLength = memoryFallback.length;
-      memoryFallback = memoryFallback.filter(t => t.id !== id);
-      return memoryFallback.length < initialLength;
-    }
 
     const result = await executeQuery<any>('DELETE FROM tasks WHERE id = ?', [id]);
     return result.affectedRows > 0;
@@ -281,10 +234,6 @@ export const getTaskById = async (id: number): Promise<Task | null> => {
     // 验证输入
     if (typeof id !== 'number' || isNaN(id) || id <= 0) {
       throw new Error('无效的任务ID');
-    }
-    
-    if (useMemoryFallback) {
-      return memoryFallback.find(t => t.id === id) || null;
     }
 
     const rows = await executeQuery<RowDataPacket[]>(

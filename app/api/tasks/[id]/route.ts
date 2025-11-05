@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTaskById, updateTask, deleteTask } from '../../../../lib/data/db';
+import { getTaskById, updateTask, deleteTask, initDatabase } from '../../../../lib/data/db';
 import { ApiResponse, Task, UpdateTaskRequest } from '../../../../lib/types';
 
-// 获取任务ID并验证格式
+
 function validateTaskId(id: string): number | null {
   const numId = parseInt(id, 10);
   if (isNaN(numId) || numId <= 0) {
@@ -11,9 +11,10 @@ function validateTaskId(id: string): number | null {
   return numId;
 }
 
-// PATCH 方法：更新任务
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await initDatabase();
     const { id: paramId } = await params;
     const id = validateTaskId(paramId);
     if (!id) {
@@ -23,7 +24,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }, { status: 400 });
     }
     
-    // 检查请求体是否为空
+    
     const rawBody = await request.text();
     if (!rawBody || rawBody.trim() === '') {
       return NextResponse.json<ApiResponse<Task>>({
@@ -42,7 +43,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }, { status: 400 });
     }
     
-    // 验证更新数据
     if (!body || (body.completed === undefined && body.title === undefined)) {
       return NextResponse.json<ApiResponse<Task>>({
         success: false,
@@ -100,9 +100,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 }
 
-// DELETE 方法：删除任务
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    
+    await initDatabase();
     const { id: paramId } = await params;
     const id = validateTaskId(paramId);
     if (!id) {
@@ -111,7 +112,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         error: '无效的任务ID'
       }, { status: 400 });
     }
-    
     // 先检查任务是否存在
     const existingTask = await getTaskById(id);
     if (!existingTask) {
